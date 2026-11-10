@@ -1,0 +1,154 @@
+/* Forest Vision AI - Tactical Intelligence HUD Stylesheet */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --hud-bg: #050811;
+  --hud-border: #142340;
+  --hud-accent: #00f5a0;
+  --hud-cyan: #00d2ff;
+  --hud-danger: #ff3366;
+}
+
+body {
+  font-family: 'Space Grotesk', -apple-system, sans-serif;
+  background-color: var(--hud-bg);
+  color: #e2e8f0;
+}
+
+code, .font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Tactical HUD Scanline Effect */
+.hud-scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.02),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.02)
+  );
+  background-size: 100% 3px, 3px 100%;
+  pointer-events: none;
+}
+
+/* Tactical Crosshair Grid Overlay */
+.hud-grid {
+  background-image: 
+    radial-gradient(rgba(0, 245, 160, 0.15) 1px, transparent 1px),
+    linear-gradient(to right, rgba(20, 35, 64, 0.15) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(20, 35, 64, 0.15) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* Scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #050811;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #142340;
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--hud-accent);
+}
+
+/* Tactical Active Navigation Item */
+.nav-item {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  border-left: 3px solid transparent;
+}
+
+.active-nav {
+  background: linear-gradient(90deg, rgba(0, 245, 160, 0.12), transparent) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-left: 3px solid var(--hud-accent) !important;
+  text-shadow: 0 0 10px rgba(0, 245, 160, 0.4);
+}
+
+/* Leaflet Container Overrides */
+.leaflet-container {
+  background: #050811 !important;
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #070d1c !important;
+  color: #f1f5f9 !important;
+  border: 1px solid #142340;
+  border-radius: 10px !important;
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(0, 245, 160, 0.15);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.leaflet-popup-tip {
+  background: #070d1c !important;
+}
+
+/* Custom Tactical Fire Marker */
+.custom-fire-marker {
+  width: 32px;
+  height: 32px;
+  background: radial-gradient(circle, #ff3366 30%, #b3003b 90%);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 0 20px rgba(255, 51, 102, 0.8), inset 0 0 10px rgba(255, 255, 255, 0.5);
+  animation: pulse-hud 2s infinite ease-in-out;
+}
+
+@keyframes pulse-hud {
+  0% { transform: scale(0.95); box-shadow: 0 0 15px rgba(255, 51, 102, 0.7); }
+  50% { transform: scale(1.1); box-shadow: 0 0 25px rgba(255, 51, 102, 1); }
+  100% { transform: scale(0.95); box-shadow: 0 0 15px rgba(255, 51, 102, 0.7); }
+}
+
+/* Custom Botanical Restoration Marker */
+.custom-plant-marker {
+  width: 32px;
+  height: 32px;
+  background: radial-gradient(circle, #00f5a0 30%, #008f5d 90%);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000;
+  box-shadow: 0 0 20px rgba(0, 245, 160, 0.8);
+}
+
+/* Tactical Time Slider */
+input[type=range]::-webkit-slider-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #00f5a0;
+  border: 2px solid #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 15px rgba(0, 245, 160, 0.9);
+}
+
+/* Print styling for court docket */
+@media print {
+  .hud-scanlines, .hud-grid, aside, header {
+    display: none !important;
+  }
+  body, main, .view-panel {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+}
