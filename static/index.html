@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forest Vision AI (VanaRakshak) — Tactical Climate Intelligence Command Center</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  
+  <!-- Fonts: Space Grotesk + JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/static/style.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Space Grotesk', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            hud: {
+              bg: '#050811',
+              panel: 'rgba(10, 16, 30, 0.78)',
+              border: '#1a2744',
+              accent: '#00f5a0',
+              cyan: '#00d2ff',
+              warning: '#ffb703',
+              danger: '#ff3366',
+              radar: 'rgba(0, 245, 160, 0.15)',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#050811] text-slate-200 font-sans min-h-screen flex flex-col antialiased selection:bg-[#00f5a0] selection:text-black overflow-hidden">
+
+  <!-- HUD SCANLINE & GRID BACKGROUND OVERLAY -->
+  <div class="hud-scanlines pointer-events-none fixed inset-0 z-50"></div>
+  <div class="hud-grid pointer-events-none fixed inset-0 z-40 opacity-20"></div>
+
+  <!-- TOP TACTICAL HUD HEADER -->
+  <header class="bg-[#070c18]/90 border-b border-[#142340] backdrop-blur-xl px-5 py-2.5 flex items-center justify-between z-30 relative select-none">
+    
+    <!-- Left: Brand & Tactical Callout -->
+    <div class="flex items-center space-x-3.5">
+      <div class="relative flex items-center justify-center w-8 h-8 rounded-lg bg-[#00f5a0]/10 border border-[#00f5a0]/40 text-[#00f5a0] shadow-[0_0_15px_rgba(0,245,160,0.25)]">
+        <i class="fa-solid fa-satellite-dish text-sm"></i>
+        <span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#00f5a0] animate-ping"></span>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="text-sm font-bold tracking-wider text-white uppercase flex items-center gap-1.5 font-mono">
+            FOREST VISION AI <span class="text-[10px] px-1.5 py-0.2 rounded bg-[#00f5a0]/15 text-[#00f5a0] border border-[#00f5a0]/30 font-semibold tracking-normal">PROTOTYPE MVP</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-mono">|</span>
+          <span class="text-[10px] font-mono text-cyan-400 bg-cyan-950/40 border border-cyan-800/40 px-2 py-0.5 rounded flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> CURATED SATELLITE FIXTURES
+          </span>
+        </div>
+        <p class="text-[10px] font-mono text-slate-400 tracking-tight">
+          PCCOE Indradhanu 2026 &bull; Theme: AI for Climate Change &bull; Ranger Triage &amp; Forensics Lead Engine
+        </p>
+      </div>
+    </div>
+
+    <!-- Center: Live Tactical UTC Telemetry -->
+    <div class="hidden lg:flex items-center space-x-6 text-[11px] font-mono bg-[#0b1326]/80 px-4 py-1 rounded-lg border border-[#142340]">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-500">UTC MISSION CLOCK:</span>
+        <span id="utcClock" class="text-white font-bold tracking-widest">--:--:-- UTC</span>
+      </div>
+      <div class="h-3 w-px bg-[#1e3052]"></div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-500">SECTOR:</span>
+        <span class="text-[#00f5a0] font-semibold">WESTERN GHATS (MH-IN)</span>
+      </div>
+      <div class="h-3 w-px bg-[#1e3052]"></div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-500">ORBIT PASS:</span>
+        <span class="text-cyan-400">NEXT TLE IN 03:42:10</span>
+      </div>
+    </div>
+
+    <!-- Right: Tactical Controls & Export -->
+    <div class="flex items-center space-x-2.5">
+      <div class="hidden sm:flex items-center bg-[#0a1122] border border-[#162544] rounded-lg p-0.5 text-[10px] font-mono">
+        <button id="btnThermalToggle" onclick="toggleThermalMode()" class="px-2.5 py-1 rounded text-slate-400 hover:text-white transition flex items-center gap-1.5">
+          <i class="fa-solid fa-temperature-arrow-up text-amber-400 text-xs"></i> THERMAL IR
+        </button>
+        <button id="btnScanlineToggle" onclick="toggleScanlines()" class="px-2.5 py-1 rounded text-[#00f5a0] bg-[#00f5a0]/15 font-semibold transition flex items-center gap-1">
+          <i class="fa-solid fa-radar text-xs"></i> HUD SCAN
+        </button>
+      </div>
+
+      <button onclick="exportTacticalReport()" class="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-black font-mono font-bold text-xs rounded-lg shadow-[0_0_20px_rgba(0,245,160,0.35)] transition flex items-center gap-1.5 border border-[#00f5a0]/40">
+        <i class="fa-solid fa-shield-halved text-xs"></i>
+        <span>EXPORT DOSSIER</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- LEFT HUD WORKSPACE DECK -->
+    <aside class="w-72 bg-[#060b17]/95 border-r border-[#142340] flex flex-col justify-between shrink-0 select-none z-20 backdrop-blur-xl">
+      <div class="p-3.5 space-y-5 overflow-y-auto custom-scrollbar">
+        
+        <!-- Tactical Navigation Menu -->
+        <div>
+          <div class="flex items-center justify-between text-[10px] font-mono tracking-widest text-slate-400 font-bold mb-2.5 px-2">
+            <span>TACTICAL NAVIGATION</span>
+            <span class="text-[#00f5a0]">[05 MODES]</span>
+          </div>
+          <nav class="space-y-1 font-mono text-xs">
+            <button onclick="switchView('overview')" id="nav-overview" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-[#0f1b33] hover:text-white transition active-nav">
+              <span class="flex items-center gap-2.5">
+                <i class="fa-solid fa-crosshairs text-xs w-4 text-[#00f5a0]"></i>
+                <span>01 // OVERVIEW</span>
+              </span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-[#00f5a0]/10 text-[#00f5a0] border border-[#00f5a0]/20 font-semibold">LIVE</span>
+            </button>
+
+            <button onclick="switchView('incident-detail')" id="nav-incident-detail" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-[#0f1b33] hover:text-white transition">
+              <span class="flex items-center gap-2.5">
+                <i class="fa-solid fa-magnifying-glass-chart text-xs w-4 text-cyan-400"></i>
+                <span>02 // INCIDENT INTEL</span>
+              </span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">DIAG</span>
+            </button>
+
+            <button onclick="switchView('legal-docket')" id="nav-legal-docket" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-[#0f1b33] hover:text-white transition">
+              <span class="flex items-center gap-2.5">
+                <i class="fa-solid fa-clipboard-check text-xs w-4 text-amber-400"></i>
+                <span>03 // FIELD REPORT</span>
+              </span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">LEAD</span>
+            </button>
+
+            <button onclick="switchView('wildfire-simulation')" id="nav-wildfire-simulation" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-[#0f1b33] hover:text-white transition">
+              <span class="flex items-center gap-2.5">
+                <i class="fa-solid fa-fire-flame-curved text-xs w-4 text-rose-500"></i>
+                <span>04 // FIRE PREDICTOR</span>
+              </span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20">HUYGENS</span>
+            </button>
+
+            <button onclick="switchView('restoration-carbon')" id="nav-restoration-carbon" class="nav-item w-full flex items-center justify-between px-3 py-2 rounded-lg text-slate-300 hover:bg-[#0f1b33] hover:text-white transition">
+              <span class="flex items-center gap-2.5">
+                <i class="fa-solid fa-seedling text-xs w-4 text-emerald-400"></i>
+                <span>05 // BIO-RESTORATION</span>
+              </span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">IPCC</span>
+            </button>
+          </nav>
+        </div>
+
+        <!-- Monitored Landscape Telemetry Card -->
+        <div class="pt-3 border-t border-[#142340]">
+          <div class="flex items-center justify-between text-[10px] font-mono tracking-widest text-slate-400 font-bold mb-2 px-2">
+            <span>TARGET SECTOR</span>
+            <span class="text-rose-400 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span> ALERT
+            </span>
+          </div>
+
+          <div class="bg-[#091122]/90 border border-[#1a2c4e] rounded-xl p-3 space-y-2 font-mono text-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-white tracking-wide">KOYNA SANCTUARY</span>
+              <span class="text-[10px] text-cyan-400">17.41°N, 73.74°E</span>
+            </div>
+            <div class="text-[11px] text-slate-400 font-sans">
+              Sahyadri Tiger Reserve Buffer &bull; Satara District
+            </div>
+
+            <div class="pt-2 border-t border-[#162747] space-y-1 text-[10px]">
+              <div class="flex justify-between text-slate-400">
+                <span>RADAR REFLECTANCE:</span>
+                <span class="text-white font-semibold">-14.2 dB</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>NDVI VEG LOSS:</span>
+                <span class="text-rose-400 font-bold">-0.56 DELTA</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>PARIVESH CLEARANCE:</span>
+                <span class="text-cyan-400 font-semibold">STAGE-II REVIEW</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sensor Health Matrix -->
+        <div class="pt-3 border-t border-[#142340]">
+          <div class="text-[10px] font-mono tracking-widest text-slate-400 font-bold mb-2 px-2">
+            TELEMETRY FEEDS
+          </div>
+          <div class="space-y-1.5 font-mono text-[11px]">
+            <div class="flex items-center justify-between px-2 py-1 rounded bg-[#091122] border border-[#142340]">
+              <span class="text-slate-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-satellite text-cyan-400 text-xs"></i> Sentinel-2 MSI
+              </span>
+              <span class="text-[#00f5a0] font-bold">10m / 5-DAY</span>
+            </div>
+            <div class="flex items-center justify-between px-2 py-1 rounded bg-[#091122] border border-[#142340]">
+              <span class="text-slate-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-fire text-amber-500 text-xs"></i> NASA FIRMS VIIRS
+              </span>
+              <span class="text-amber-400 font-bold">375m NRT</span>
+            </div>
+            <div class="flex items-center justify-between px-2 py-1 rounded bg-[#091122] border border-[#142340]">
+              <span class="text-slate-400 flex items-center gap-1.5">
+                <i class="fa-solid fa-wind text-teal-400 text-xs"></i> Open-Meteo Wind
+              </span>
+              <span class="text-[#00f5a0] font-bold">LIVE VECTOR</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Callout -->
+      <div class="p-3 border-t border-[#142340] font-mono text-[10px] text-slate-400 flex items-center justify-between bg-[#040812]">
+        <div class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#00f5a0]"></span>
+          <span>SYSTEM READY</span>
+        </div>
+        <span class="text-cyan-400">LATENCY 28ms</span>
+      </div>
+    </aside>
+
+    <!-- CENTER & RIGHT DYNAMIC VIEWSPACE -->
+    <main class="flex-1 overflow-y-auto bg-[#050811] custom-scrollbar p-5 relative z-10">
+
+      <!-- ======================================================== -->
+      <!-- VIEW 01: OVERVIEW HUD (Tactical Change & Threat Matrix)   -->
+      <!-- ======================================================== -->
+      <section id="view-overview" class="view-panel space-y-4">
+        
+        <!-- Header Ribbon -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#0a1122]/90 border border-[#162747] p-3.5 rounded-xl backdrop-blur-md">
+          <div>
+            <div class="flex items-center gap-2 text-[10px] font-mono text-[#00f5a0] uppercase tracking-widest">
+              <span class="w-2 h-2 rounded-full bg-[#00f5a0] animate-pulse"></span>
+              SECTOR RECONNAISSANCE // KOYNA SANCTUARY BASIN
+            </div>
+            <h2 class="text-xl font-bold text-white tracking-wide mt-0.5">Forest Intelligence Overview</h2>
+            <p class="text-xs text-slate-400">
+              Multispectral Sentinel-2 change detection, thermal radiance telemetry &amp; legal conflict verification.
+            </p>
+          </div>
+          <div class="flex items-center space-x-2 font-mono text-xs">
+            <button onclick="exportSnapshotModal()" class="px-3 py-1.5 bg-[#0e1933] hover:bg-[#15254d] text-slate-200 border border-[#1a2d54] rounded-lg transition">
+              EXPORT TELEMETRY
+            </button>
+            <button onclick="switchView('incident-detail')" class="px-3.5 py-1.5 bg-[#00f5a0] hover:bg-[#00d68b] text-black font-bold rounded-lg transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,245,160,0.3)]">
+              <span>INSPECT INCIDENT</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Key Glowing Telemetry Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Card 1 -->
+          <div class="bg-[#081022]/90 border border-[#142340] rounded-xl p-3.5 relative overflow-hidden group hover:border-rose-500/40 transition">
+            <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-rose-500/10 rounded-full blur-xl group-hover:bg-rose-500/20 transition"></div>
+            <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">CANOPY LOSS SIGNAL</span>
+            <div class="text-3xl font-extrabold text-rose-500 font-mono mt-1 tracking-tight">82.0%</div>
+            <div class="text-[10px] font-mono text-slate-400 mt-1 flex items-center justify-between">
+              <span>VEGETATION COLLAPSE</span>
+              <span class="text-rose-400 font-bold">&Delta; -0.56 NDVI</span>
+            </div>
+          </div>
+
+          <!-- Card 2 -->
+          <div class="bg-[#081022]/90 border border-[#142340] rounded-xl p-3.5 relative overflow-hidden group hover:border-amber-500/40 transition">
+            <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition"></div>
+            <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">AI FORENSIC CONFIDENCE</span>
+            <div class="text-3xl font-extrabold text-amber-400 font-mono mt-1 tracking-tight">91.0%</div>
+            <div class="text-[10px] font-mono text-slate-400 mt-1 flex items-center justify-between">
+              <span>MINING HYPOTHESIS</span>
+              <span class="text-amber-300 font-semibold">GEOMETRY MATCH</span>
+            </div>
+          </div>
+
+          <!-- Card 3 -->
+          <div class="bg-[#081022]/90 border border-[#142340] rounded-xl p-3.5 relative overflow-hidden group hover:border-cyan-500/40 transition">
+            <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-cyan-500/10 rounded-full blur-xl group-hover:bg-cyan-500/20 transition"></div>
+            <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">BIOMASS DESTROYED</span>
+            <div class="text-3xl font-extrabold text-white font-mono mt-1 tracking-tight">2,220 <span class="text-xs text-slate-400 font-normal">T</span></div>
+            <div class="text-[10px] font-mono text-slate-400 mt-1 flex items-center justify-between">
+              <span>IPCC TIER-1 PROTOCOL</span>
+              <span class="text-cyan-400">14.8 HECTARES</span>
+            </div>
+          </div>
+
+          <!-- Card 4 -->
+          <div class="bg-[#081022]/90 border border-[#142340] rounded-xl p-3.5 relative overflow-hidden group hover:border-rose-500/40 transition">
+            <div class="absolute -right-6 -bottom-6 w-20 h-20 bg-rose-500/10 rounded-full blur-xl group-hover:bg-rose-500/20 transition"></div>
+            <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wider block">ESTIMATED CARBON RELEASE</span>
+            <div class="text-3xl font-extrabold text-rose-400 font-mono mt-1 tracking-tight">4,070 <span class="text-xs text-slate-400 font-normal">tCO₂e</span></div>
+            <div class="text-[10px] font-mono text-slate-400 mt-1 flex items-center justify-between">
+              <span>ATMOSPHERIC BURDEN</span>
+              <span class="text-rose-400 font-bold">&asymp; 885 CARS/YR</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle Grid: Tactical Map HUD + Signals Deck -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <!-- Center Tactical Map (8 Cols) -->
+          <div class="lg:col-span-8 bg-[#081022] border border-[#162747] rounded-xl overflow-hidden relative h-[440px] shadow-2xl flex flex-col">
+            <!-- Tactical Overlays on Map -->
+            <div class="absolute top-3 left-3 z-[400] flex space-x-1.5 font-mono text-[11px]">
+              <span class="px-2.5 py-1 rounded bg-black/80 backdrop-blur-md border border-[#00f5a0]/40 text-[#00f5a0] flex items-center gap-1.5 font-semibold">
+                <i class="fa-solid fa-layer-group"></i> SATELLITE TRUE-COLOR
+              </span>
+              <span class="px-2.5 py-1 rounded bg-black/60 backdrop-blur-md border border-cyan-500/40 text-cyan-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-draw-polygon"></i> SPECTRAL CONTOUR
+              </span>
+            </div>
+
+            <!-- Radar Target Reticle Elements -->
+            <div class="pointer-events-none absolute inset-0 z-[350] flex items-center justify-center">
+              <div class="w-48 h-48 rounded-full border border-[#00f5a0]/15 animate-pulse"></div>
+              <div class="w-96 h-96 rounded-full border border-[#00f5a0]/10"></div>
+            </div>
+
+            <div id="overviewMap" class="w-full h-full"></div>
+
+            <!-- Floating Target HUD Card inside Map -->
+            <div class="absolute bottom-4 left-4 z-[400] bg-[#070d1c]/95 backdrop-blur-xl border border-rose-500/40 p-3.5 rounded-xl text-xs max-w-sm shadow-[0_0_25px_rgba(0,0,0,0.8)] font-mono">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-white text-sm">KOYNA SANCTUARY RIDGE</span>
+                <span class="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-400 border border-rose-500/30">INC-MH-2026-081</span>
+              </div>
+              <div class="text-[11px] text-slate-400 mt-1">17.4125&deg;N, 73.7482&deg;E &bull; Elevation: 940m AMSL</div>
+              <div class="text-[11px] text-rose-400 font-semibold mt-2 flex items-center gap-1.5 bg-rose-950/40 p-1.5 rounded border border-rose-500/20">
+                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                <span>CRITICAL THERMAL HOTSPOT &bull; FRP: 42.8 MW</span>
+              </div>
+            </div>
+
+            <div class="absolute bottom-3 right-3 z-[400] text-[10px] font-mono text-slate-400 bg-black/80 px-2 py-0.5 rounded border border-[#142340]">
+              COPERNICUS SENTINEL-2 MSI &bull; NRT SYNCHRONIZED
+            </div>
+          </div>
+
+          <!-- Right Tactical Signals Deck (4 Cols) -->
+          <div class="lg:col-span-4 bg-[#081022] border border-[#162747] rounded-xl p-4 flex flex-col justify-between space-y-3 font-mono">
+            <div class="space-y-3">
+              <div class="flex items-center justify-between border-b border-[#142340] pb-2">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <i class="fa-solid fa-triangle-exclamation text-amber-400"></i> SIGNALS REQUIRING REVIEW
+                </h3>
+                <span class="text-[10px] bg-[#00f5a0]/15 text-[#00f5a0] px-2 py-0.5 rounded border border-[#00f5a0]/30 font-bold">03 TRIAGED</span>
+              </div>
+              <p class="text-[11px] text-slate-400 font-sans leading-relaxed">
+                Three multi-source telemetry signals isolated over Koyna Incident #081. Reconciliation mandatory.
+              </p>
+
+              <!-- Signal 1 -->
+              <div class="bg-[#0b1428] border border-rose-500/40 rounded-xl p-3 text-xs space-y-1 relative group hover:border-rose-400 transition cursor-pointer" onclick="switchView('wildfire-simulation')">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-fire-burner text-rose-500"></i> THERMAL HOTSPOT DETECTED
+                  </span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-400 font-bold">SELECTED</span>
+                </div>
+                <div class="text-[11px] text-slate-300 font-sans">Koyna Ridge Thermal Peak &bull; 348.6K Brightness Temp</div>
+                <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                  <span>NASA FIRMS VIIRS</span>
+                  <span class="text-[#00f5a0] font-bold">RUN FIRE SIM &rarr;</span>
+                </div>
+              </div>
+
+              <!-- Signal 2 -->
+              <div class="bg-[#0b1428] border border-amber-500/30 rounded-xl p-3 text-xs space-y-1 group hover:border-amber-400 transition cursor-pointer" onclick="switchView('incident-detail')">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-tree text-amber-400"></i> ABRUPT CANOPY DEFICIT
+                  </span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400">REVIEW</span>
+                </div>
+                <div class="text-[11px] text-slate-300 font-sans">82% loss across 14.8 ha core protected canopy.</div>
+                <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                  <span>SENTINEL-2 CHANGE</span>
+                  <span class="text-cyan-400 font-bold">ANALYZE PATCH &rarr;</span>
+                </div>
+              </div>
+
+              <!-- Signal 3 -->
+              <div class="bg-[#0b1428] border border-cyan-500/30 rounded-xl p-3 text-xs space-y-1 group hover:border-cyan-400 transition cursor-pointer" onclick="switchView('legal-docket')">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-white flex items-center gap-1.5">
+                    <i class="fa-solid fa-code-compare text-cyan-400"></i> CONFLICTING CLEARANCE CLAIM
+                  </span>
+                  <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-400">CONFLICT</span>
+                </div>
+                <div class="text-[11px] text-slate-300 font-sans">PARIVESH corridor claimed vs. AI quarrying shape.</div>
+                <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                  <span>PARIVESH + AI</span>
+                  <span class="text-amber-400 font-bold">OPEN DOSSIER &rarr;</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action Button -->
+            <button onclick="switchView('incident-detail')" class="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-black rounded-lg text-xs font-bold font-mono transition flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,245,160,0.3)]">
+              <span>ENGAGE INCIDENT FORENSICS</span> <i class="fa-solid fa-crosshairs text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bottom Grid: Telemetry Health & Rules of Engagement -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 font-mono text-xs">
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5 space-y-2.5">
+            <div class="flex items-center justify-between border-b border-[#142340] pb-2">
+              <span class="text-white font-bold tracking-wide">SENSOR TELEMETRY MATRIX</span>
+              <span class="text-[#00f5a0] text-[10px]">ALL FEEDS NOMINAL</span>
+            </div>
+            <div class="space-y-1.5 text-[11px]">
+              <div class="flex justify-between py-1 border-b border-[#142340]/60">
+                <span class="text-slate-400">Copernicus Sentinel-2 (B4/B8 NDVI)</span>
+                <span class="text-[#00f5a0] font-bold">PIPELINE SYNCHRONIZED</span>
+              </div>
+              <div class="flex justify-between py-1 border-b border-[#142340]/60">
+                <span class="text-slate-400">NASA FIRMS Active Thermal Radiance</span>
+                <span class="text-cyan-400 font-bold">CALIBRATED NRT</span>
+              </div>
+              <div class="flex justify-between py-1">
+                <span class="text-slate-400">MoEFCC PARIVESH Diversion Registry</span>
+                <span class="text-amber-400 font-bold">CORRIDOR RECONCILING</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5 space-y-2.5">
+            <div class="flex items-center justify-between border-b border-[#142340] pb-2">
+              <span class="text-white font-bold tracking-wide">INCIDENT TRIAGE PRIORITIES</span>
+              <span class="text-cyan-400 text-[10px]">STAGE-01 PROTOCOL</span>
+            </div>
+            <ol class="space-y-1.5 text-[11px] text-slate-300 list-decimal list-inside font-sans">
+              <li>Isolate Huygens elliptical fire perimeter before downwind village interface.</li>
+              <li>Reconcile transmission corridor permit against open-cast mining geometry.</li>
+              <li>Seal digital chain of custody under Indian Forest Act 1927 Section 26.</li>
+            </ol>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 02: INCIDENT INTEL (Forensics & PARIVESH Audit)     -->
+      <!-- ======================================================== -->
+      <section id="view-incident-detail" class="view-panel hidden space-y-4">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#0a1122]/90 border border-[#162747] p-3.5 rounded-xl backdrop-blur-md font-mono">
+          <div>
+            <div class="text-[10px] text-[#00f5a0] uppercase tracking-widest">
+              DIAGNOSTIC WORKSPACE // TARGET #INC-MH-2026-081
+            </div>
+            <h2 class="text-xl font-bold text-white tracking-wide mt-0.5 font-sans">Koyna Sanctuary Ridge — Forensic Dossier</h2>
+            <p class="text-xs text-slate-400 font-sans">
+              Patch topology, aspect ratio geometry &amp; government clearance cross-reference.
+            </p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <button onclick="exportAnalysisModal()" class="px-3 py-1.5 bg-[#0e1933] hover:bg-[#15254d] text-slate-200 border border-[#1a2d54] rounded-lg transition">
+              EXPORT FORENSIC JSON
+            </button>
+            <button onclick="switchView('legal-docket')" class="px-3.5 py-1.5 bg-[#00f5a0] hover:bg-[#00d68b] text-black font-bold rounded-lg transition flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,245,160,0.3)]">
+              <span>OPEN LEGAL DOSSIER</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3 Interactive Analysis Tabs -->
+        <div class="flex space-x-4 border-b border-[#142340] text-xs font-mono">
+          <button class="pb-2 border-b-2 border-[#00f5a0] text-[#00f5a0] font-bold">01 // FORENSIC CONTOUR</button>
+          <button class="pb-2 text-slate-400 hover:text-white transition">02 // SATELLITE SPECTRUM</button>
+          <button class="pb-2 text-slate-400 hover:text-white transition">03 // RECONCILIATION AUDIT</button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <!-- Left: Satellite Footprint Map (7 Cols) -->
+          <div class="lg:col-span-7 space-y-4">
+            <div class="bg-[#081022] border border-[#162747] rounded-xl overflow-hidden relative h-[380px] shadow-2xl">
+              <div id="incidentMap" class="w-full h-full"></div>
+              <div class="absolute bottom-4 left-4 z-[400] bg-[#070d1c]/95 backdrop-blur-xl border border-rose-500/40 p-3 rounded-xl text-xs max-w-xs font-mono">
+                <div class="font-bold text-white">KOYNA EXCAVATION ANOMALY</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Area: 14.8 ha &bull; Perimeter: 1,850m</div>
+                <div class="text-[11px] text-amber-400 font-semibold mt-1">Classification: Unauthorized Mining Hypothesis</div>
+              </div>
+            </div>
+
+            <!-- Detection Metrics -->
+            <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5 space-y-2 font-mono text-xs">
+              <div class="flex justify-between items-center border-b border-[#142340] pb-2">
+                <span class="text-white font-bold">SPECTRAL DETECTION SUMMARY</span>
+                <span class="text-cyan-400 text-[10px]">VIIRS S-NPP + S2</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 text-center pt-1">
+                <div class="bg-[#0b1428] p-2 rounded border border-[#142340]">
+                  <span class="text-slate-400 text-[10px] block">FIRE RADIATIVE PWR</span>
+                  <span class="text-rose-400 font-bold text-sm">42.8 MW</span>
+                </div>
+                <div class="bg-[#0b1428] p-2 rounded border border-[#142340]">
+                  <span class="text-slate-400 text-[10px] block">BRIGHTNESS TEMP</span>
+                  <span class="text-amber-400 font-bold text-sm">348.6 K</span>
+                </div>
+                <div class="bg-[#0b1428] p-2 rounded border border-[#142340]">
+                  <span class="text-slate-400 text-[10px] block">VEGETATION DROP</span>
+                  <span class="text-rose-400 font-bold text-sm">82.0%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Forensics & PARIVESH Card (5 Cols) -->
+          <div class="lg:col-span-5 space-y-4">
+            
+            <!-- AI Forensic Card -->
+            <div class="bg-[#081022] border border-amber-500/40 rounded-xl p-4 space-y-3 font-mono">
+              <div class="flex items-center justify-between border-b border-[#142340] pb-2">
+                <h3 class="text-xs font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-shapes text-amber-400"></i> AI PATCH GEOMETRY FORENSICS
+                </h3>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">CV TOPOLOGY</span>
+              </div>
+
+              <div class="text-sm font-bold text-white font-sans">
+                Unauthorized Mining / Quarrying Excavation
+              </div>
+              <p class="text-xs text-slate-300 font-sans leading-relaxed">
+                Multi-spectral patch extraction identifies high soil reflectance, concentric crater contours, and severe vegetative stripping incompatible with linear rights-of-way.
+              </p>
+
+              <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                <div class="bg-[#0b1428] p-2 rounded border border-[#142340]">
+                  <span class="text-slate-400 text-[10px] block">LINEARITY</span>
+                  <span class="text-cyan-400 font-bold">2.58x</span>
+                </div>
+                <div class="bg-[#0b1428] p-2 rounded border border-[#142340]">
+                  <span class="text-slate-400 text-[10px] block">COMPACTNESS</span>
+                  <span class="text-teal-400 font-bold">0.543</span>
+                </div>
+                <div class="bg-[#0b1428] p-2 rounded border border-[#142340]">
+                  <span class="text-slate-400 text-[10px] block">AI CONFIDENCE</span>
+                  <span class="text-[#00f5a0] font-bold">91.0%</span>
+                </div>
+              </div>
+
+              <div class="p-2.5 bg-amber-950/30 border border-amber-500/40 rounded-lg text-[11px] text-amber-300 font-sans flex items-start gap-2">
+                <i class="fa-solid fa-triangle-exclamation text-amber-400 mt-0.5"></i>
+                <span>91% model confidence reflects geometric classification, not final legal conviction. Ground inspection mandated.</span>
+              </div>
+
+              <!-- BENCHMARK CONFUSION MATRIX -->
+              <div class="p-3 bg-[#0a1122] rounded-lg border border-[#162747] space-y-2 text-[10px]">
+                <div class="flex justify-between items-center text-slate-300 border-b border-[#142340] pb-1 font-bold">
+                  <span>SYNTHETIC SHAPE VALIDATION (N=1,200)</span>
+                  <span class="text-[#00f5a0]">ACC: 91.3% | F1: 0.91</span>
+                </div>
+                <div class="grid grid-cols-3 gap-1 text-center font-mono">
+                  <div class="bg-[#0b1428] p-1 rounded">
+                    <span class="text-slate-500 block">CORRIDORS</span>
+                    <span class="text-[#00f5a0] font-bold">P: 93.4%</span>
+                  </div>
+                  <div class="bg-[#0b1428] p-1 rounded">
+                    <span class="text-slate-500 block">AGRI PARCELS</span>
+                    <span class="text-cyan-400 font-bold">P: 89.2%</span>
+                  </div>
+                  <div class="bg-[#0b1428] p-1 rounded">
+                    <span class="text-slate-500 block">QUARRY PITS</span>
+                    <span class="text-amber-400 font-bold">P: 91.0%</span>
+                  </div>
+                </div>
+                <div class="text-[9px] text-slate-500 font-sans">
+                  Trained on synthetic polygon primitives (aspect ratio, isoperimetric quotient). Traceable benchmark beats black-box claims.
+                </div>
+              </div>
+            </div>
+
+            <!-- MoEFCC PARIVESH Clearance Card -->
+            <div class="bg-[#081022] border border-cyan-500/40 rounded-xl p-4 space-y-3 font-mono">
+              <div class="flex items-center justify-between border-b border-[#142340] pb-2">
+                <h3 class="text-xs font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-building-shield text-cyan-400"></i> MoEFCC PARIVESH CLEARANCE REGISTRY
+                </h3>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">CORRIDOR OVERLAP</span>
+              </div>
+
+              <div class="text-xs text-slate-200 font-sans">
+                Reported permitted alignment for: <strong class="text-cyan-300">Koyna Hydroelectric Stage IV High-Voltage Transmission Corridor</strong>
+              </div>
+
+              <div class="space-y-1.5 text-xs text-slate-300">
+                <div class="flex justify-between py-1 border-b border-[#142340]">
+                  <span class="text-slate-400">CLEARANCE TYPE:</span>
+                  <span class="text-white">Linear Infrastructure FCA 1980</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-[#142340]">
+                  <span class="text-slate-400">APPROVED DIVERTED:</span>
+                  <span class="text-[#00f5a0] font-bold">18.2 HECTARES</span>
+                </div>
+                <div class="flex justify-between py-1">
+                  <span class="text-slate-400">CAMPA DEPOSIT:</span>
+                  <span class="text-cyan-400">INR 2.10 CR VERIFIED</span>
+                </div>
+              </div>
+
+              <div class="p-2.5 bg-cyan-950/30 border border-cyan-500/40 rounded-lg text-[11px] text-cyan-200 font-sans flex items-start gap-2">
+                <i class="fa-solid fa-circle-info text-cyan-400 mt-0.5"></i>
+                <span>PARIVESH records confirm transmission line approval, but actual ground footprint exceeds authorized width by 140m.</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 03: LEGAL DOSSIER (Court-Ready Preliminary Offence) -->
+      <!-- ======================================================== -->
+      <section id="view-legal-docket" class="view-panel hidden space-y-4">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#0a1122]/90 border border-[#162747] p-3.5 rounded-xl backdrop-blur-md font-mono">
+          <div>
+            <div class="text-[10px] text-[#00f5a0] uppercase tracking-widest">
+              FIELD INSPECTION DOSSIER // TRIAGE LEAD #CR-KOYNA-2026-081
+            </div>
+            <h2 class="text-xl font-bold text-white tracking-wide mt-0.5 font-sans">Field Incident Inspection Report</h2>
+            <p class="text-xs text-slate-400 font-sans">
+              Preliminary Ranger Inspection Lead &bull; Subject to physical ground-truth verification &bull; Not a legal determination.
+            </p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <button onclick="addReviewNotePrompt()" class="px-3 py-1.5 bg-[#0e1933] hover:bg-[#15254d] text-slate-200 border border-[#1a2d54] rounded-lg transition">
+              + ADD OFFICER NOTE
+            </button>
+            <button onclick="generateCourtDocketPDF()" class="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-black font-bold rounded-lg transition flex items-center gap-1.5 shadow-[0_0_20px_rgba(0,245,160,0.3)]">
+              <i class="fa-solid fa-file-pdf text-xs"></i> <span>EXPORT FIELD LEAD PDF</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Audit Score Ribbon -->
+        <div class="flex flex-wrap items-center justify-between gap-3 bg-[#081022] border border-[#162747] px-4 py-2.5 rounded-xl font-mono text-xs">
+          <div class="flex items-center gap-3">
+            <span class="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold">
+              STATUS: CONFLICTING SIGNALS
+            </span>
+            <span class="text-slate-400">AUTHENTICATION:</span>
+            <span id="authScoreBadge" class="text-[#00f5a0] font-bold">2 OF 4 VERIFIED (50%)</span>
+          </div>
+          <div class="text-slate-400">
+            CASE OFFICER: <span class="text-white">RANGE OFFICER - SATARA FOREST DIVISION</span>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <!-- Left: Evidence Register (8 Cols) -->
+          <div class="lg:col-span-8 space-y-4 font-mono">
+            
+            <div class="bg-[#081022] border border-[#162747] rounded-xl p-4 space-y-3">
+              <div class="flex items-center justify-between border-b border-[#142340] pb-2">
+                <h3 class="text-xs font-bold text-white flex items-center gap-2">
+                  <i class="fa-solid fa-database text-cyan-400"></i> FORENSIC EVIDENCE REGISTER (04 RECORDS)
+                </h3>
+                <span class="text-[10px] text-slate-400">CRYPTOGRAPHIC SHA-256 VALIDATED</span>
+              </div>
+
+              <!-- Evidence Record 1 -->
+              <div class="bg-[#0b1428] border border-[#162747] rounded-xl p-3.5 text-xs space-y-2 hover:border-[#00f5a0]/40 transition">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-fire text-rose-500"></i> 01 // THERMAL RADIANCE HOTSPOT (NASA FIRMS)
+                  </span>
+                  <span class="text-[10px] text-[#00f5a0] bg-[#00f5a0]/15 px-2 py-0.5 rounded border border-[#00f5a0]/30 font-bold">AUTHENTICATED</span>
+                </div>
+                <div class="text-[11px] text-slate-300 font-sans">
+                  VIIRS S-NPP 375m sensor detected 348.6K brightness temperature at 17.4125&deg;N, 73.7482&deg;E.
+                </div>
+                <div class="text-[10px] text-slate-400 flex justify-between pt-1 border-t border-[#142340]">
+                  <span>HASH: a7f89b41...e2c0</span>
+                  <span class="text-cyan-400">TIMESTAMP: 2026-10-08T06:14:02Z</span>
+                </div>
+              </div>
+
+              <!-- Evidence Record 2 -->
+              <div class="bg-[#0b1428] border border-[#162747] rounded-xl p-3.5 text-xs space-y-2 hover:border-[#00f5a0]/40 transition">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-satellite text-cyan-400"></i> 02 // MULTISPECTRAL CANOPY COLLAPSE (SENTINEL-2)
+                  </span>
+                  <span class="text-[10px] text-[#00f5a0] bg-[#00f5a0]/15 px-2 py-0.5 rounded border border-[#00f5a0]/30 font-bold">AUTHENTICATED</span>
+                </div>
+                <div class="text-[11px] text-slate-300 font-sans">
+                  Pre-event NDVI 0.78 collapsed to 0.22 post-clearing across 14.8 hectares of reserved forest canopy.
+                </div>
+                <div class="text-[10px] text-slate-400 flex justify-between pt-1 border-t border-[#142340]">
+                  <span>HASH: 5c91b820...41d9</span>
+                  <span class="text-cyan-400">TILE: T43QDB (ORBIT 076)</span>
+                </div>
+              </div>
+
+              <!-- Evidence Record 3 -->
+              <div class="bg-[#0b1428] border border-[#162747] rounded-xl p-3.5 text-xs space-y-2 hover:border-amber-500/40 transition">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-building-flag text-amber-400"></i> 03 // PARIVESH MoEFCC INFRASTRUCTURE PERMIT
+                  </span>
+                  <span class="text-[10px] text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded border border-amber-500/30 font-bold">SCOPE MISMATCH</span>
+                </div>
+                <div class="text-[11px] text-slate-300 font-sans">
+                  Koyna Hydroelectric Stage IV High-Voltage corridor diversion approved for 18.2 ha, but cleared patch deviates laterally.
+                </div>
+                <div class="text-[10px] text-slate-400 flex justify-between pt-1 border-t border-[#142340]">
+                  <span>DOC: PARIVESH-MH-2025-1029</span>
+                  <span class="text-amber-400">STATUS: SPATIAL VIOLATION FLAGGED</span>
+                </div>
+              </div>
+
+              <!-- Evidence Record 4 -->
+              <div class="bg-[#0b1428] border border-[#162747] rounded-xl p-3.5 text-xs space-y-2 hover:border-rose-500/40 transition">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-robot text-teal-400"></i> 04 // AI FORENSIC TOPOLOGY DIAGNOSIS
+                  </span>
+                  <span class="text-[10px] text-rose-400 bg-rose-500/15 px-2 py-0.5 rounded border border-rose-500/30 font-bold">LEGAL HYPOTHESIS</span>
+                </div>
+                <div class="text-[11px] text-slate-300 font-sans">
+                  Contour aspect ratio indicates open-cast stone quarrying extraction, contradicting linear right-of-way morphology.
+                </div>
+                <div class="text-[10px] text-slate-400 flex justify-between pt-1 border-t border-[#142340]">
+                  <span>CONFIDENCE: 91.0%</span>
+                  <span class="text-rose-400">PRIMA FACIE EVIDENCE</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Evidence Resolution Card -->
+            <div class="bg-[#081022] border border-[#162747] rounded-xl p-4 space-y-2 font-sans text-xs">
+              <div class="font-bold text-white font-mono flex items-center gap-2">
+                <i class="fa-solid fa-gavel text-amber-400"></i> STATUTORY VIOLATION ASSESSMENT
+              </div>
+              <p class="text-slate-300 leading-relaxed text-[11px]">
+                Under <strong>Indian Forest Act 1927 Section 26(1)(a)</strong> and <strong>Wildlife Protection Act 1972 Section 27</strong>, unauthorized quarrying or tree felling beyond the strict cadastral boundary of an approved transmission permit constitutes a non-bailable forest offence.
+              </p>
+            </div>
+
+          </div>
+
+          <!-- Right Column: Checklists & Mini-Footprint (4 Cols) -->
+          <div class="lg:col-span-4 space-y-4 font-mono text-xs">
+            
+            <!-- Mini Footprint Map -->
+            <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5 space-y-2">
+              <span class="font-bold text-white">INCIDENT BOUNDARY FOOTPRINT</span>
+              <div class="h-44 rounded-lg overflow-hidden border border-[#162747] relative">
+                <div id="docketMiniMap" class="w-full h-full"></div>
+                <div class="absolute bottom-2 right-2 z-[400] text-[9px] bg-black/80 px-1.5 py-0.5 rounded text-cyan-400">GPS ACCREDITED</div>
+              </div>
+            </div>
+
+            <!-- Interactive Authentication Checklist -->
+            <div class="bg-[#081022] border border-[#162747] rounded-xl p-4 space-y-3">
+              <div class="flex items-center justify-between border-b border-[#142340] pb-2">
+                <span class="font-bold text-white">COURT AUDIT CHECKLIST</span>
+                <span class="text-[#00f5a0] text-[10px]">E-FILING READY</span>
+              </div>
+              <div class="space-y-2 text-slate-300 text-[11px]">
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                  <input type="checkbox" checked onchange="updateAuthScore()" class="auth-check rounded bg-[#0e1933] border-slate-700 text-[#00f5a0] focus:ring-0">
+                  <span>Verify Sentinel-2 multispectral tile metadata</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                  <input type="checkbox" checked onchange="updateAuthScore()" class="auth-check rounded bg-[#0e1933] border-slate-700 text-[#00f5a0] focus:ring-0">
+                  <span>Verify NASA FIRMS thermal coordinates</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                  <input type="checkbox" onchange="updateAuthScore()" class="auth-check rounded bg-[#0e1933] border-slate-700 text-[#00f5a0] focus:ring-0">
+                  <span>Reconcile MoEFCC PARIVESH cadastral polygons</span>
+                </label>
+                <label class="flex items-center gap-2.5 cursor-pointer">
+                  <input type="checkbox" onchange="updateAuthScore()" class="auth-check rounded bg-[#0e1933] border-slate-700 text-[#00f5a0] focus:ring-0">
+                  <span>Dispatch Range Officer preliminary report</span>
+                </label>
+              </div>
+              <p class="text-[10px] text-slate-500 pt-1 border-t border-[#142340]">
+                All digital evidence cryptographically timestamped for judicial submission.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 04: WILDFIRE SIMULATION (Huygens Elliptical Physics) -->
+      <!-- ======================================================== -->
+      <section id="view-wildfire-simulation" class="view-panel hidden space-y-4">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#0a1122]/90 border border-[#162747] p-3.5 rounded-xl backdrop-blur-md font-mono">
+          <div>
+            <div class="text-[10px] text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+              PHYSICS SPREAD ENGINE // HUYGENS WAVEFRONT (ALEXANDER 1985 FORMULAS &bull; NOT AI)
+            </div>
+            <h2 class="text-xl font-bold text-white tracking-wide mt-0.5 font-sans">Physics-Based Wildfire Spread Simulator</h2>
+            <p class="text-xs text-slate-400 font-sans">
+              Deterministic 3-equation elliptical wavefront (forward rate, LB ratio, wind azimuth) &bull; No unvalidated AI claims.
+            </p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <button onclick="resetSimInputs()" class="px-3 py-1.5 bg-[#0e1933] hover:bg-[#15254d] text-slate-200 border border-[#1a2d54] rounded-lg transition">
+              RESET PARAMETERS
+            </button>
+            <button onclick="runSimAnimation()" class="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg transition flex items-center gap-1.5 shadow-[0_0_20px_rgba(244,63,94,0.4)]">
+              <i class="fa-solid fa-play text-xs"></i> <span>SIMULATE TIME SPREAD</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Fire Telemetry Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5">
+            <span class="text-[10px] text-slate-400 uppercase">TIME HORIZON</span>
+            <div class="text-3xl font-extrabold text-amber-400 mt-1" id="wfSimHorizonText">+3.0 HOURS</div>
+            <div class="text-[10px] text-slate-400 mt-1">FORECAST WINDOW</div>
+          </div>
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5">
+            <span class="text-[10px] text-slate-400 uppercase">PROJECTED BURN AREA</span>
+            <div class="text-3xl font-extrabold text-rose-500 mt-1" id="wfSimAreaText">188.8 HA</div>
+            <div class="text-[10px] text-rose-400 font-semibold mt-1">CRITICAL DISASTER (TIER 3)</div>
+          </div>
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5">
+            <span class="text-[10px] text-slate-400 uppercase">FORWARD SPREAD REACH</span>
+            <div class="text-3xl font-extrabold text-cyan-400 mt-1" id="wfSimReachText">1.83 KM</div>
+            <div class="text-[10px] text-slate-400 mt-1">DOWNWIND PENETRATION</div>
+          </div>
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5">
+            <span class="text-[10px] text-slate-400 uppercase">WIND FORCING VECTOR</span>
+            <div class="text-3xl font-extrabold text-[#00f5a0] mt-1" id="wfSimWindText">15 KM/H</div>
+            <div class="text-[10px] text-slate-400 mt-1" id="wfSimAzimuthText">AZIMUTH 87&deg; (EASTWARD)</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <!-- Simulation Map (8 Cols) -->
+          <div class="lg:col-span-8 space-y-4">
+            <div class="bg-[#081022] border border-[#162747] rounded-xl overflow-hidden relative h-[380px] shadow-2xl">
+              <div id="simMap" class="w-full h-full"></div>
+              <div class="absolute bottom-4 left-4 z-[400] bg-[#070d1c]/95 backdrop-blur-xl border border-amber-500/40 p-3.5 rounded-xl text-xs max-w-sm font-mono">
+                <div class="font-bold text-white" id="simCardTitle">PROJECTED BURN ENVELOPE: +3.0 HOURS</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Koyna Ridge Sanctuary &bull; Sahyadri Escarpment</div>
+                <div class="text-[11px] text-amber-400 font-bold mt-1" id="simCardDesc">Projected Area: 188.8 ha &bull; Forward Reach: 1.83 km</div>
+              </div>
+            </div>
+
+            <!-- Time Scrubber Slider -->
+            <div class="bg-[#081022] border border-[#162747] rounded-xl p-4 space-y-2.5 font-mono">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-white font-bold flex items-center gap-2">
+                  <i class="fa-solid fa-clock-rotate-left text-cyan-400"></i> HUYGENS TIME-SCRUB HORIZON
+                </span>
+                <span class="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 font-bold text-xs" id="wfSliderBadge">
+                  +3.0 HOURS FORECAST
+                </span>
+              </div>
+              <input type="range" id="wfTimeSlider" min="0" max="12" step="1" value="3" oninput="onWfSliderChange(this.value)"
+                     class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-[#00f5a0]">
+              <div class="flex justify-between text-xs text-slate-400 pt-1">
+                <span onclick="setWfSlider(0)" class="cursor-pointer hover:text-white">0h (Ignition)</span>
+                <span onclick="setWfSlider(3)" class="cursor-pointer hover:text-white text-amber-400 font-bold">+3h (Tactical)</span>
+                <span onclick="setWfSlider(6)" class="cursor-pointer hover:text-white">+6h (Critical)</span>
+                <span onclick="setWfSlider(12)" class="cursor-pointer hover:text-white">+12h (Disaster)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Column: Meteorological Inputs & Threat Physics (4 Cols) -->
+          <div class="lg:col-span-4 space-y-4 font-mono text-xs">
+            <div class="bg-[#081022] border border-[#162747] rounded-xl p-4 space-y-3">
+              <span class="font-bold text-white border-b border-[#142340] pb-2 block">ATMOSPHERIC FORCING INPUTS</span>
+              <div class="space-y-2">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">WIND VELOCITY:</span>
+                  <span class="text-[#00f5a0] font-bold">15.0 KM/H</span>
+                </div>
+                <div class="w-full bg-[#0b1428] h-1.5 rounded-full overflow-hidden">
+                  <div class="bg-[#00f5a0] h-full w-[45%]"></div>
+                </div>
+
+                <div class="flex justify-between pt-1">
+                  <span class="text-slate-400">AZIMUTH BEARING:</span>
+                  <span class="text-cyan-400 font-bold">87&deg; (EASTWARD)</span>
+                </div>
+
+                <div class="flex justify-between pt-1">
+                  <span class="text-slate-400">RELATIVE HUMIDITY:</span>
+                  <span class="text-amber-400 font-bold">28% (EXTREME DRY)</span>
+                </div>
+
+                <div class="flex justify-between pt-1">
+                  <span class="text-slate-400">FUEL MOISTURE INDEX:</span>
+                  <span class="text-rose-400 font-bold">1.45 (CRITICAL)</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-[#081022] border border-rose-500/40 rounded-xl p-4 space-y-2">
+              <span class="font-bold text-rose-400 block">TACTICAL EVACUATION WARNING</span>
+              <p class="text-[11px] text-slate-300 font-sans leading-relaxed">
+                Huygens propagation projects flame front traversing eastern ridge within +4.2 hours. Forward forest checkpost requires immediate relocation.
+              </p>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ======================================================== -->
+      <!-- VIEW 05: BIO-RESTORATION (IPCC Carbon & Native Flora)    -->
+      <!-- ======================================================== -->
+      <section id="view-restoration-carbon" class="view-panel hidden space-y-4">
+        
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#0a1122]/90 border border-[#162747] p-3.5 rounded-xl backdrop-blur-md font-mono">
+          <div>
+            <div class="text-[10px] text-[#00f5a0] uppercase tracking-widest">
+              CLIMATE MITIGATION // IPCC TIER-1 BIOMASS LOSS INDICATOR
+            </div>
+            <h2 class="text-xl font-bold text-white tracking-wide mt-0.5 font-sans">Ecological Bio-Restoration &amp; Carbon Accounting</h2>
+            <p class="text-xs text-slate-400 font-sans">
+              IPCC Tier-1 reference biomass estimate &bull; Not tradable regulatory offset credits &bull; Native flora recovery roadmap.
+            </p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <button onclick="editAssumptionsModal()" class="px-3 py-1.5 bg-[#0e1933] hover:bg-[#15254d] text-slate-200 border border-[#1a2d54] rounded-lg transition">
+              MODEL ASSUMPTIONS
+            </button>
+            <button onclick="exportDraftPlanModal()" class="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-black font-bold rounded-lg transition flex items-center gap-1.5 shadow-[0_0_20px_rgba(0,245,160,0.3)]">
+              <i class="fa-solid fa-seedling text-xs"></i> <span>EXPORT REFORESTATION PLAN</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 4 Carbon Metric Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 font-mono">
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5">
+            <span class="text-[10px] text-slate-400 uppercase">BIOMASS DESTROYED</span>
+            <div class="text-3xl font-extrabold text-white mt-1">2,220 T</div>
+            <div class="text-[10px] text-slate-400 mt-1">150 T/HA ABOVE-GROUND</div>
+          </div>
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5">
+            <span class="text-[10px] text-slate-400 uppercase">CO₂E ATMOSPHERIC BURDEN</span>
+            <div class="text-3xl font-extrabold text-rose-400 mt-1">4,070 T</div>
+            <div class="text-[10px] text-rose-400 mt-1">IPCC EXPANSION 3.67x</div>
+          </div>
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5">
+            <span class="text-[10px] text-slate-400 uppercase">SAPLING PRESCRIPTION</span>
+            <div class="text-3xl font-extrabold text-[#00f5a0] mt-1">16,280</div>
+            <div class="text-[10px] text-[#00f5a0] mt-1">1,100 STEMS / HECTARE</div>
+          </div>
+          <div class="bg-[#081022] border border-[#162747] rounded-xl p-3.5">
+            <span class="text-[10px] text-slate-400 uppercase">TARGET CARBON RECOVERY</span>
+            <div class="text-3xl font-extrabold text-cyan-400 mt-1">~5.7 YRS</div>
+            <div class="text-[10px] text-cyan-400 mt-1">CANOPY EQUILIBRIUM</div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          <!-- Left: Restoration Map & Recovery Curve (7 Cols) -->
+          <div class="lg:col-span-7 space-y-4">
+            <div class="bg-[#081022] border border-[#162747] rounded-xl overflow-hidden relative h-[380px] shadow-2xl">
+              <div id="restorationMap" class="w-full h-full"></div>
+              <div class="absolute bottom-4 left-4 z-[400] bg-[#070d1c]/95 backdrop-blur-xl border border-emerald-500/40 p-3.5 rounded-xl text-xs max-w-sm font-mono">
+                <div class="font-bold text-white">RESTORATION TARGET COMPARTMENT</div>
+                <div class="text-[11px] text-slate-400 mt-0.5">Area: 14.8 ha &bull; Western Ghats Deciduous Matrix</div>
+                <div class="text-[11px] text-[#00f5a0] font-bold mt-1">Prescription: 16,280 Indigenous Saplings</div>
+              </div>
+            </div>
+
+            <!-- Sleek Recovery Trajectory Curve -->
+            <div class="bg-[#081022] border border-[#162747] rounded-xl p-4 space-y-2 font-mono">
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-white font-bold">DECARBONIZATION RECAPTURE TRAJECTORY</span>
+                <span class="text-[#00f5a0] text-[10px]">~5.7 YEAR EQUILIBRIUM</span>
+              </div>
+              <div class="relative h-28 w-full pt-2">
+                <svg viewBox="0 0 500 100" class="w-full h-full stroke-[#00f5a0] fill-none" preserveAspectRatio="none">
+                  <path d="M 10,85 C 140,85 260,30 485,18" stroke="#00f5a0" stroke-width="3.5" stroke-linecap="round"/>
+                </svg>
+                <div class="absolute top-2 right-4 text-[10px] text-black bg-[#00f5a0] font-bold px-2 py-0.5 rounded shadow">
+                  100% SINK RESTORED
+                </div>
+              </div>
+              <div class="flex justify-between text-[11px] text-slate-400 pt-1">
+                <span>Y0: Baseline Destruction</span>
+                <span>Y2: Sapling Establishment</span>
+                <span>Y5.7: Total Carbon Parity</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Native Species Prescription (5 Cols) -->
+          <div class="lg:col-span-5 space-y-4 font-mono text-xs">
+            <div class="bg-[#081022] border border-[#162747] rounded-xl p-4 space-y-3">
+              <span class="font-bold text-white border-b border-[#142340] pb-2 block">
+                NATIVE BOTANICAL PRESCRIPTION (WESTERN GHATS)
+              </span>
+
+              <!-- Species 1 -->
+              <div class="bg-[#0b1428] border border-[#162747] rounded-xl p-3 flex items-center space-x-3 hover:border-[#00f5a0]/40 transition">
+                <div class="w-10 h-10 rounded-lg bg-[#00f5a0]/15 text-[#00f5a0] border border-[#00f5a0]/30 flex items-center justify-center text-base shrink-0">
+                  <i class="fa-solid fa-tree"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-white">Tectona grandis (Teak / Saag)</div>
+                  <div class="text-[11px] text-slate-400 font-sans">Apex canopy hardwood &bull; 45 kg CO₂/tree/yr</div>
+                </div>
+              </div>
+
+              <!-- Species 2 -->
+              <div class="bg-[#0b1428] border border-[#162747] rounded-xl p-3 flex items-center space-x-3 hover:border-cyan-500/40 transition">
+                <div class="w-10 h-10 rounded-lg bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 flex items-center justify-center text-base shrink-0">
+                  <i class="fa-solid fa-seedling"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-white">Dendrocalamus strictus (Solid Bamboo)</div>
+                  <div class="text-[11px] text-slate-400 font-sans">Rapid pioneer root binder &bull; 65 kg CO₂/clump/yr</div>
+                </div>
+              </div>
+
+              <!-- Species 3 -->
+              <div class="bg-[#0b1428] border border-[#162747] rounded-xl p-3 flex items-center space-x-3 hover:border-amber-500/40 transition">
+                <div class="w-10 h-10 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center justify-center text-base shrink-0">
+                  <i class="fa-solid fa-leaf"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-bold text-white">Syzygium cumini (Jamun)</div>
+                  <div class="text-[11px] text-slate-400 font-sans">Riparian biodiversity keystone &bull; 50 kg CO₂/tree/yr</div>
+                </div>
+              </div>
+
+              <div class="p-3 bg-[#091122] rounded-xl border border-[#162747] space-y-1 text-[11px]">
+                <div class="flex justify-between text-slate-300">
+                  <span>TOTAL NURSERY STEMS:</span>
+                  <span class="text-[#00f5a0] font-bold">16,280 SAPLINGS</span>
+                </div>
+                <div class="flex justify-between text-slate-300">
+                  <span>AFFORESTATION MODEL:</span>
+                  <span class="text-cyan-400 font-bold">MIYAWAKI + RIPARIAN HYBRID</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- TACTICAL FOOTER HUD -->
+      <footer class="pt-6 pb-2 text-[10px] font-mono text-slate-400 flex flex-col sm:flex-row justify-between items-center border-t border-[#142340] gap-2">
+        <div>PCCOE INDRADHANU 2026 &bull; TACTICAL AI CLIMATE COMMAND &bull; NON-CLASSIFIED PROTOTYPE</div>
+        <div class="text-[#00f5a0]">VANARAKSHAK INTEL DECK // SECURE LOCAL ENGINE</div>
+      </footer>
+
+    </main>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
